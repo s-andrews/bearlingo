@@ -1,0 +1,106 @@
+---
+title: |
+  ![](https://images.cdn.autocar.co.uk/sites/autocar.co.uk/files/images/car-reviews/first-drives/legacy/citroen-logo-2022.jpg)<br>
+  Battery Efficiency Report
+subtitle: "23-02-2026, 10 degrees"
+author: "Simon Andrews"
+format: 
+  html:
+    embed-resources: true
+    toc: true
+    toc-expand: true
+    df-print: paged
+    page-layout: full
+    grid:
+      body-width: 2000px
+      sidebar-width: 0px
+
+---
+
+<style>
+h1.title img {
+  width: 250px;
+}
+</style>
+
+# Introduction
+
+This is a report on a journey in a 2023 Citroen Berlingo EV
+
+
+# Setup
+
+We'll just load the packages we are going to use.
+
+```{r}
+#| warning: false
+#| message: false
+library(tidyverse)
+theme_set(theme_bw())
+```
+
+
+# Loading Data
+
+```{r}
+#| warning: false
+#| message: false
+read_delim("data/journey_23-03-2026_10_degrees.tsv") -> data
+head(data)
+```
+
+# Data Restructuring
+
+## Setting baselines
+
+We want to have increasing values for all metrics
+
+```{r}
+data |>
+  mutate(
+    Real_Miles_Driven = Mileage - min(Mileage),
+    Battery_use = 100 - Percent_battery,
+    Estimated_Mileage_Used = max(Estimaged_Miles) - Estimaged_Miles 
+  ) |>
+  select(Real_Miles_Driven:last_col()) -> data
+
+head(data)
+```
+
+# Plotting
+
+```{r}
+data |>
+  pivot_longer(
+    cols=-Real_Miles_Driven,
+    names_to="metric",
+    values_to="value"
+  ) |>
+  ggplot(aes(x=Real_Miles_Driven,y=value, colour=metric, fill=metric)) +
+  geom_smooth(method=lm, fill=NA) +
+  geom_point(pch=21, colour="black") +
+  geom_abline(slope=1, intercept=0)
+```
+
+The linear fit is pretty good. 
+
+The battery estimates drop quickly for the first 7% or so, but are then pretty stable against mileage thereafter.
+
+Let's parameterise this and see what our total range might be.
+
+# Range estimate Based on Battery Percent
+
+```{r}
+lm(Real_Miles_Driven ~ Battery_use, data=data) -> battery_estimate
+
+battery_estimate
+
+full_mileage_estimate_from_battery = (100 * battery_estimate$coefficients[2]) + battery_estimate$coefficients[1]
+
+names(full_mileage_estimate_from_battery) <- "Full Mileage From Battery"
+
+full_mileage_estimate_from_battery
+
+```
+
+So this would suggest that the real world mileage from the car would be about 134 miles.  Not terrible against a theoretical 160, and at 10 degrees.
