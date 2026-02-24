@@ -1,0 +1,2 @@
+Date  Morning_Temp  Morning_Percent Afternoon_Temp  Afternoon_Percent
+2026-02-24  11  87
